@@ -1,7 +1,32 @@
 (function () {
+  function getBills() {
+    try {
+      return JSON.parse(localStorage.getItem("bills") || "[]");
+    } catch {
+      return [];
+    }
+  }
+
+  function saveBills(bills) {
+    localStorage.setItem("bills", JSON.stringify(bills));
+  }
+
   function openSettings() {
     const old = document.getElementById("settingsModal");
     if (old) old.remove();
+
+    const bills = getBills();
+
+    const billListHtml = bills.length
+      ? bills.map((bill, index) => `
+        <div style="border:1px solid #ddd;border-radius:14px;padding:12px;margin:10px 0;background:#fff">
+          <b>Bill ${bill.id || bill.billNo || bill.bill_number || index + 1}</b><br>
+          <span>Total: ₹${bill.total || bill.grandTotal || bill.amount || bill.total_amount || 0}</span><br>
+          <button onclick="editSelectedBill(${index})" style="margin-top:8px;padding:10px 14px;border:0;border-radius:10px;background:#2563eb;color:white">Edit</button>
+          <button onclick="deleteSelectedBill(${index})" style="margin-top:8px;padding:10px 14px;border:0;border-radius:10px;background:#ef4444;color:white">Delete</button>
+        </div>
+      `).join("")
+      : `<p>No saved bills found.</p>`;
 
     const box = document.createElement("div");
     box.id = "settingsModal";
@@ -42,18 +67,54 @@
           <button onclick="alert('Contact saved')" style="padding:12px 18px;border:0;border-radius:12px;background:#f97316;color:white">Save Contact</button>
 
           <h3>Bill Settings</h3>
-          <button onclick="alert('Edit bill option ready')" style="padding:12px 18px;border:0;border-radius:12px;background:#2563eb;color:white">Edit Bill</button>
-          <button onclick="alert('Delete bill option ready')" style="padding:12px 18px;border:0;border-radius:12px;background:#ef4444;color:white">Delete Bill</button>
+          <p>Select one bill below to edit or delete.</p>
+          ${billListHtml}
         </div>
       </div>
     `;
     document.body.appendChild(box);
   }
 
+  window.deleteSelectedBill = function (index) {
+    const bills = getBills();
+    if (!confirm("Delete this selected bill?")) return;
+
+    bills.splice(index, 1);
+    saveBills(bills);
+
+    alert("Selected bill deleted ✅");
+    openSettings();
+  };
+
+  window.editSelectedBill = function (index) {
+    const bills = getBills();
+    const bill = bills[index];
+
+    const oldAmount = bill.total || bill.grandTotal || bill.amount || bill.total_amount || 0;
+    const newAmount = prompt("Enter new bill amount", oldAmount);
+
+    if (newAmount === null) return;
+
+    bill.total = Number(newAmount);
+    bill.grandTotal = Number(newAmount);
+    bill.amount = Number(newAmount);
+    bill.total_amount = Number(newAmount);
+
+    bills[index] = bill;
+    saveBills(bills);
+
+    alert("Bill updated ✅");
+    openSettings();
+  };
+
   function hookButton() {
     document.querySelectorAll("button, a, div").forEach(el => {
       if ((el.innerText || "").toLowerCase().includes("app settings")) {
-        el.onclick = openSettings;
+        el.style.cursor = "pointer";
+        el.onclick = function (e) {
+          e.preventDefault();
+          openSettings();
+        };
       }
     });
   }
