@@ -14,5 +14,18 @@
   </head>
   <body>
     <div id="root"></div>
+
+<script>
+setTimeout(() => {
+  document.querySelectorAll("button, a, div, span").forEach((el) => {
+    if ((el.innerText || "").trim() === "App Settings") {
+      el.onclick = function(e) {
+        e.preventDefault();
+        alert("App Settings working bro ✅");
+      };
+    }
+  });
+}, 2000);
+</script>
   </body>
 </html>
