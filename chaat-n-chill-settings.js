@@ -3,7 +3,7 @@
 
   const defaultSettings = {
     cloud: { sheetsUrl: "", formUrl: "" },
-    profile: { shopName: "Chaat N Chill", ownerName: "", email: "", phone: "", address: "", image: "" },
+    profile: { shopName: "Chaat N Chill", ownerName: "", email: "", phone: "", address: "" },
     theme: { mode: "light", primaryColor: "#f97316", accentColor: "#0ea5e9", fontSize: "medium" },
     contact: { businessPhone: "", whatsapp: "", email: "", website: "", address: "", instagram: "", facebook: "" }
   };
@@ -16,10 +16,10 @@
   }
 
   function getBills() {
-    let keys = ["savedBills", "bills", "juiceBills", "chaatBills"];
-    for (let key of keys) {
+    const keys = ["savedBills", "bills", "juiceBills", "chaatBills"];
+    for (const key of keys) {
       try {
-        let data = JSON.parse(localStorage.getItem(key) || "[]");
+        const data = JSON.parse(localStorage.getItem(key) || "[]");
         if (Array.isArray(data) && data.length) return { key, data };
       } catch {}
     }
@@ -28,11 +28,7 @@
 
   function deleteBill(index) {
     const result = getBills();
-    if (!result.data.length) {
-      alert("No bills found");
-      return;
-    }
-
+    if (!result.data.length) return alert("No bills found");
     if (!confirm("Delete this selected bill?")) return;
 
     result.data.splice(index, 1);
@@ -43,16 +39,30 @@
   }
 
   function editBill(index) {
-    alert("Edit bill option ready for Bill #" + (index + 1));
+    const result = getBills();
+    const bill = result.data[index];
+    if (!bill) return;
+
+    const oldTotal = bill.total || bill.grandTotal || bill.amount || 0;
+    const newTotal = prompt("Enter new bill amount", oldTotal);
+    if (newTotal === null) return;
+
+    bill.total = Number(newTotal);
+    bill.grandTotal = Number(newTotal);
+    bill.amount = Number(newTotal);
+
+    result.data[index] = bill;
+    localStorage.setItem(result.key, JSON.stringify(result.data));
+
+    alert("Bill updated");
+    renderSettings();
   }
 
   function renderBills() {
     const result = getBills();
     const bills = result.data;
 
-    if (!bills.length) {
-      return `<div class="empty-box">No saved bills found.</div>`;
-    }
+    if (!bills.length) return `<div class="empty-box">No saved bills found.</div>`;
 
     return `
       <div class="settings-card">
@@ -259,7 +269,7 @@
   window.editSelectedBill = editBill;
 
   document.addEventListener("click", function (e) {
-    const target = e.target.closest("button, a, div");
+    const target = e.target.closest("button, a");
     if (!target) return;
 
     const text = (target.innerText || "").trim().toLowerCase();
@@ -351,11 +361,6 @@
       background: linear-gradient(135deg, #fff7ed, #e0f2fe);
       color: #f97316;
       transform: translateY(-2px);
-    }
-
-    .settings-content {
-      display: grid;
-      gap: 16px;
     }
 
     .settings-card {
