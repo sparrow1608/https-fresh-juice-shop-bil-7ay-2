@@ -901,8 +901,23 @@
     `;
   }
 
+  function normalizeSettingsTab(tab) {
+    const allowed = ["bills", "cloud", "profile", "theme", "contact"];
+    return allowed.includes(tab) ? tab : "bills";
+  }
+
+  function closeOriginalDrawer() {
+    const backdrop = Array.from(document.querySelectorAll(".fixed.inset-0")).find((node) => !node.closest("#cncSettingsOverlay"));
+    if (backdrop) backdrop.click();
+  }
+
   function openSettings(tab) {
-    state.activeTab = tab || state.activeTab || "bills";
+    if (!document.body) {
+      document.addEventListener("DOMContentLoaded", () => openSettings(tab), { once: true });
+      return;
+    }
+
+    state.activeTab = normalizeSettingsTab(tab || state.activeTab || "bills");
     let overlay = document.querySelector("#cncSettingsOverlay");
     if (!overlay) {
       overlay = document.createElement("div");
@@ -910,8 +925,26 @@
       overlay.className = "cnc-settings-overlay";
       document.body.appendChild(overlay);
     }
+    overlay.style.display = "flex";
     renderSettings();
     if (state.activeTab === "bills" && !state.bills.length && !state.loadingBills) loadBills();
+  }
+
+  function openSettingsSafely(tab) {
+    const nextTab = normalizeSettingsTab(tab || "bills");
+    closeItemEditor();
+    closeOriginalDrawer();
+    openSettings(nextTab);
+
+    // Beginner note: React can redraw the sidebar immediately after a click.
+    // These small retries make sure the custom App Settings modal stays open.
+    window.requestAnimationFrame(() => openSettings(nextTab));
+    window.setTimeout(() => {
+      if (!document.querySelector("#cncSettingsOverlay")) openSettings(nextTab);
+    }, 80);
+    window.setTimeout(() => {
+      if (!document.querySelector("#cncSettingsOverlay")) openSettings(nextTab);
+    }, 350);
   }
 
   function closeSettings() {
@@ -1305,13 +1338,19 @@
     const target = event.target.closest("button, a, [data-settings-tab], [data-save-cloud]");
     if (!target) return;
 
-    if (target.matches("[data-close-settings]")) closeSettings();
+    if (target.matches("[data-close-settings]")) {
+      event.preventDefault();
+      closeSettings();
+      return;
+    }
 
     if (target.matches("[data-settings-tab]")) {
-      state.activeTab = target.getAttribute("data-settings-tab") || "bills";
+      event.preventDefault();
+      state.activeTab = normalizeSettingsTab(target.getAttribute("data-settings-tab") || "bills");
       state.confirmDeleteId = null;
       renderSettings();
       if (state.activeTab === "bills" && !state.bills.length && !state.loadingBills) loadBills();
+      return;
     }
 
     const selectButton = target.closest("[data-select-bill]");
@@ -1451,11 +1490,13 @@
   function handlePageClick(event) {
     const route = event.target.closest("[data-cnc-route]");
     if (route) {
+      event.preventDefault();
+      event.stopPropagation();
       const label = route.getAttribute("data-cnc-route");
       if (label === "dashboard" || label === "billing") clickTopTab("Billing");
       if (label === "purchasing") clickTopTab("Purchasing");
       if (label === "reports") clickTopTab("Reports");
-      document.querySelector(".fixed.inset-0")?.click();
+      closeOriginalDrawer();
       return;
     }
 
@@ -1463,7 +1504,8 @@
     if (itemsButton) {
       event.preventDefault();
       event.stopPropagation();
-      document.querySelector(".fixed.inset-0")?.click();
+      closeSettings();
+      closeOriginalDrawer();
       openItemEditor();
       return;
     }
@@ -1472,9 +1514,8 @@
     if (settingsButton) {
       event.preventDefault();
       event.stopPropagation();
-      const tab = settingsButton.getAttribute("data-open-settings") || "bills";
-      document.querySelector(".fixed.inset-0")?.click();
-      openSettings(tab === "settings" ? "bills" : tab);
+      event.stopImmediatePropagation?.();
+      openSettingsSafely(settingsButton.getAttribute("data-open-settings") || "bills");
       return;
     }
 
@@ -1484,14 +1525,20 @@
     if (text === "app settings" || text.includes("app settings")) {
       event.preventDefault();
       event.stopPropagation();
-      openSettings("bills");
+      event.stopImmediatePropagation?.();
+      openSettingsSafely("bills");
     }
   }
 
   function handleHashRoute() {
     const route = location.hash.replace("#settings/", "");
-    const allowed = ["bills", "cloud", "profile", "theme", "contact"];
-    if (location.hash.startsWith("#settings")) openSettings(allowed.includes(route) ? route : "bills");
+    if (location.hash.startsWith("#settings")) openSettingsSafely(route);
+  }
+
+  function handleGlobalKeydown(event) {
+    if (event.key !== "Escape") return;
+    if (document.querySelector("#cncSettingsOverlay")) closeSettings();
+    if (document.querySelector("#cncItemEditorOverlay")) closeItemEditor();
   }
 
   function startObservers() {
@@ -1510,6 +1557,7 @@
   }
 
   window.openChaatNChillSettings = openSettings;
+  window.openChaatNChillSettingsSafely = openSettingsSafely;
   window.closeChaatNChillSettings = closeSettings;
   window.openChaatNChillItemEditor = openItemEditor;
   window.closeChaatNChillItemEditor = closeItemEditor;
@@ -1519,6 +1567,7 @@
   document.addEventListener("click", handleItemEditorClick, true);
   document.addEventListener("input", handleBillInput, true);
   document.addEventListener("change", handleItemEditorChange, true);
+  document.addEventListener("keydown", handleGlobalKeydown, true);
   window.addEventListener("hashchange", handleHashRoute);
 
   installDeletedBillFilter();
