@@ -1,4 +1,3 @@
-alert("NEW SETTINGS FILE LOADED");
 (function () {
   "use strict";
 
