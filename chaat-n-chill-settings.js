@@ -127,6 +127,14 @@
     return `${RUPEE}${parseAmount(value).toFixed(2)}`;
   }
 
+  function getShopName() {
+    return state.settings.profile.shopName?.trim() || SHOP_NAME;
+  }
+
+  function getLogoSrc() {
+    return state.settings.profile.image || LOGO_SRC;
+  }
+
   function shortError(error) {
     return String(error?.message || error || "Please try again").slice(0, 140);
   }
@@ -175,6 +183,7 @@
     document.documentElement.style.setProperty("--cnc-accent", theme.accentColor);
     document.documentElement.style.setProperty("--cnc-font-scale", scale);
     document.documentElement.classList.toggle("cnc-dark", theme.mode === "dark");
+    document.title = `${getShopName()} - Billing & Management`;
   }
 
   function toast(message) {
@@ -864,9 +873,9 @@
       <div class="cnc-settings-shell" role="dialog" aria-modal="true" aria-label="App Settings">
         <aside class="cnc-settings-sidebar">
           <div class="cnc-settings-brand">
-            <img src="${LOGO_SRC}" alt="${SHOP_NAME} logo">
+            <img src="${escapeHtml(getLogoSrc())}" alt="${escapeHtml(getShopName())} logo">
             <div>
-              <strong>${escapeHtml(state.settings.profile.shopName || SHOP_NAME)}</strong>
+              <strong>${escapeHtml(getShopName())}</strong>
               <span>App Settings</span>
             </div>
           </div>
@@ -1415,12 +1424,14 @@
   function replaceTextNodes(root) {
     const walker = document.createTreeWalker(root || document.body, NodeFilter.SHOW_TEXT);
     const replacements = [];
+    const shopName = getShopName();
     while (walker.nextNode()) {
       const node = walker.currentNode;
       if (!node.nodeValue) continue;
       let text = node.nodeValue;
-      if (text.includes("JuiceShop")) text = text.replaceAll("JuiceShop", SHOP_NAME);
-      if (text.includes("Fresh Juice Shop")) text = text.replaceAll("Fresh Juice Shop", SHOP_NAME);
+      if (text.includes("JuiceShop")) text = text.replaceAll("JuiceShop", shopName);
+      if (text.includes("Fresh Juice Shop")) text = text.replaceAll("Fresh Juice Shop", shopName);
+      if (text.includes(SHOP_NAME) && shopName !== SHOP_NAME) text = text.replaceAll(SHOP_NAME, shopName);
       if (text.includes("$")) text = text.replaceAll("$", RUPEE);
       if (text !== node.nodeValue) replacements.push([node, text]);
     }
@@ -1430,9 +1441,10 @@
   }
 
   function replaceLogoNearText(container) {
+    const shopName = getShopName();
     const brandRows = Array.from(container.querySelectorAll("div")).filter((node) => {
       const text = (node.textContent || "").trim();
-      return text.includes(SHOP_NAME) && node.querySelector("div");
+      return (text.includes(SHOP_NAME) || text.includes(shopName) || text.includes("JuiceShop")) && node.querySelector("div");
     });
 
     brandRows.slice(0, 3).forEach((row) => {
@@ -1442,7 +1454,7 @@
       });
       if (!logoBox || logoBox.querySelector(".cnc-logo-img")) return;
       logoBox.classList.add("cnc-logo-wrap");
-      logoBox.innerHTML = `<img class="cnc-logo-img" src="${LOGO_SRC}" alt="${SHOP_NAME} logo">`;
+      logoBox.innerHTML = `<img class="cnc-logo-img" src="${escapeHtml(getLogoSrc())}" alt="${escapeHtml(shopName)} logo">`;
     });
   }
 
@@ -1457,6 +1469,22 @@
     const buttons = Array.from(document.querySelectorAll("button"));
     const button = buttons.find((item) => (item.textContent || "").trim().toLowerCase() === label.toLowerCase());
     if (button) button.click();
+  }
+
+  function ensureHeaderSettingsButton() {
+    const header = document.querySelector("header");
+    if (!header || header.querySelector("[data-cnc-header-settings]")) return;
+    const rightSlots = Array.from(header.querySelectorAll("div")).filter((node) => {
+      const className = node.getAttribute("class") || "";
+      return className.split(/\s+/).includes("w-9");
+    });
+    const slot = rightSlots[rightSlots.length - 1];
+    if (!slot) return;
+    slot.innerHTML = `
+      <button class="cnc-header-settings" data-cnc-header-settings data-open-settings="bills" type="button" title="App Settings" aria-label="App Settings">
+        ${icon("settings")}
+      </button>
+    `;
   }
 
   function enhanceSidebar() {
@@ -1552,6 +1580,7 @@
       }
       replaceBranding();
       enhanceSidebar();
+      ensureHeaderSettingsButton();
     });
     observer.observe(document.documentElement, { childList: true, subtree: true });
   }
@@ -1574,11 +1603,13 @@
   applyTheme();
   startObservers();
   replaceBranding();
+  ensureHeaderSettingsButton();
   handleHashRoute();
 
   const startup = window.setInterval(() => {
     replaceBranding();
     enhanceSidebar();
+    ensureHeaderSettingsButton();
   }, 700);
   window.setTimeout(() => window.clearInterval(startup), 8000);
 })();

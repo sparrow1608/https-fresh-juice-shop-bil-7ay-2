@@ -87,6 +87,25 @@ body {
   width: 2rem;
 }
 
+.cnc-header-settings {
+  align-items: center;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 0.8rem;
+  color: var(--cnc-primary);
+  display: inline-flex;
+  height: 2.25rem;
+  justify-content: center;
+  transition: background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  width: 2.25rem;
+}
+
+.cnc-header-settings:hover {
+  background: #ffedd5;
+  box-shadow: 0 10px 20px rgba(249, 115, 22, 0.16);
+  transform: translateY(-1px);
+}
+
 .cnc-settings-overlay {
   align-items: center;
   animation: cncFadeIn 160ms ease;
